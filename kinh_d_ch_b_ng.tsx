@@ -1,499 +1,138 @@
-import React, { useState, useRef } from 'react';
+<style>
 
-// ==========================================
-// 1. DATA: TỪ ĐIỂN KINH DỊCH & LOGIC
-// ==========================================
+body{
+    margin:0;
+    font-family:"Arial";
+    color:white;
 
-const TRIGRAM_MAP = {
-  '111': { index: 0, name: 'Càn', element: 'Thiên' },
-  '110': { index: 1, name: 'Đoài', element: 'Trạch' },
-  '101': { index: 2, name: 'Ly', element: 'Hỏa' },
-  '100': { index: 3, name: 'Chấn', element: 'Lôi' },
-  '011': { index: 4, name: 'Tốn', element: 'Phong' },
-  '010': { index: 5, name: 'Khảm', element: 'Thủy' },
-  '001': { index: 6, name: 'Cấn', element: 'Sơn' },
-  '000': { index: 7, name: 'Khôn', element: 'Địa' },
-};
-
-const HEXAGRAM_NAMES = [
-  ['Thuần Càn', 'Thiên Trạch Lý', 'Thiên Hỏa Đồng Nhân', 'Thiên Lôi Vô Vọng', 'Thiên Phong Cấu', 'Thiên Thủy Tụng', 'Thiên Sơn Độn', 'Thiên Địa Bĩ'],
-  ['Trạch Thiên Quải', 'Thuần Đoài', 'Trạch Hỏa Cách', 'Trạch Lôi Tùy', 'Trạch Phong Đại Quá', 'Trạch Thủy Khốn', 'Trạch Sơn Hàm', 'Trạch Địa Tụy'],
-  ['Hỏa Thiên Đại Hữu', 'Hỏa Trạch Khuê', 'Thuần Ly', 'Hỏa Lôi Phệ Hạp', 'Hỏa Phong Đỉnh', 'Hỏa Thủy Vị Tế', 'Hỏa Sơn Lữ', 'Hỏa Địa Tấn'],
-  ['Lôi Thiên Đại Tráng', 'Lôi Trạch Quy Muội', 'Lôi Hỏa Phong', 'Thuần Chấn', 'Lôi Phong Hằng', 'Lôi Thủy Giải', 'Lôi Sơn Tiểu Quá', 'Lôi Địa Dự'],
-  ['Phong Thiên Tiểu Súc', 'Phong Trạch Trung Phu', 'Phong Hỏa Gia Nhân', 'Phong Lôi Ích', 'Thuần Tốn', 'Phong Thủy Hoán', 'Phong Sơn Tiệm', 'Phong Địa Quán'],
-  ['Thủy Thiên Nhu', 'Thủy Trạch Tiết', 'Thủy Hỏa Ký Tế', 'Thủy Lôi Truân', 'Thủy Phong Tỉnh', 'Thuần Khảm', 'Thủy Sơn Kiển', 'Thủy Địa Tỷ'],
-  ['Sơn Thiên Đại Súc', 'Sơn Trạch Tổn', 'Sơn Hỏa Bí', 'Sơn Lôi Di', 'Sơn Phong Cổ', 'Sơn Thủy Mông', 'Thuần Cấn', 'Sơn Địa Bác'],
-  ['Địa Thiên Thái', 'Địa Trạch Lâm', 'Địa Hỏa Minh Di', 'Địa Lôi Phục', 'Địa Phong Thăng', 'Địa Thủy Sư', 'Địa Sơn Khiêm', 'Thuần Khôn']
-];
-
-const getOriginalBinary = (val) => (val === 7 || val === 9 ? '1' : '0');
-const getTransformedBinary = (val) => (val === 7 || val === 6 ? '1' : '0');
-
-const analyzeHexagram = (lines, isTransformed = false) => {
-  if (lines.length !== 6) return null;
-  const binaryArray = lines.map(val => isTransformed ? getTransformedBinary(val) : getOriginalBinary(val));
-  const lowerBinary = binaryArray.slice(0, 3).join('');
-  const upperBinary = binaryArray.slice(3, 6).join('');
-  const lowerTrigram = TRIGRAM_MAP[lowerBinary];
-  const upperTrigram = TRIGRAM_MAP[upperBinary];
-  const hexagramName = HEXAGRAM_NAMES[upperTrigram.index][lowerTrigram.index];
-  return { lowerTrigram, upperTrigram, hexagramName, binaryArray };
-};
-
-
-// ==========================================
-// 2. COMPONENTS
-// ==========================================
-
-const HexagramLine = ({ value, isTransformed, index }) => {
-  const binary = isTransformed ? getTransformedBinary(value) : getOriginalBinary(value);
-  const isYang = binary === '1';
-  const showChangingSymbol = !isTransformed && (value === 6 || value === 9);
-  const changingSymbol = value === 6 ? '✕' : '◯'; 
-
-  return (
-    <div className="flex items-center justify-center gap-3 w-full mb-2.5 group">
-      <div className="text-xs md:text-sm font-serif text-yellow-600/70 w-4 text-right transition-colors group-hover:text-yellow-400">
-        {index + 1}
-      </div>
-      <div className="w-32 md:w-48 h-6 md:h-7 relative flex items-center">
-        {isYang ? (
-          <div className="w-full h-full rounded shadow-[0_0_10px_rgba(234,179,8,0.2)] bg-gradient-to-r from-yellow-700 via-yellow-400 to-yellow-700 transition-all duration-700 relative overflow-hidden">
-             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-          </div>
-        ) : (
-          <div className="w-full h-full flex justify-between transition-all duration-700">
-            <div className="w-[45%] h-full rounded shadow-[0_0_10px_rgba(234,179,8,0.2)] bg-gradient-to-r from-yellow-700 via-yellow-400 to-yellow-700 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-            </div>
-            <div className="w-[45%] h-full rounded shadow-[0_0_10px_rgba(234,179,8,0.2)] bg-gradient-to-r from-yellow-700 via-yellow-400 to-yellow-700 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="text-sm md:text-base font-bold text-red-500 w-4 text-left drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]">
-        {showChangingSymbol && changingSymbol}
-      </div>
-    </div>
-  );
-};
-
-const HexagramDisplay = ({ lines, isTransformed, title }) => {
-  const analysis = analyzeHexagram(lines, isTransformed);
-  const displayLines = [...lines];
-  while (displayLines.length < 6) displayLines.push(null);
-
-  return (
-    <div className="flex flex-col items-center bg-gradient-to-b from-[#064e3b]/60 to-[#022c22]/80 p-6 md:p-8 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] border border-yellow-600/30 min-w-[280px] backdrop-blur-md relative overflow-hidden h-full">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent opacity-50"></div>
-      <h3 className="font-serif text-xl md:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-600 mb-6 border-b border-yellow-700/50 pb-3 w-full text-center drop-shadow-md">
-        {title}
-      </h3>
-      <div className="flex flex-col-reverse mb-4 w-full">
-        {displayLines.map((val, idx) => (
-          val !== null ? (
-            <HexagramLine key={idx} index={idx} value={val} isTransformed={isTransformed} />
-          ) : (
-            <div key={`ghost-${idx}`} className="flex items-center justify-center gap-3 w-full mb-2.5 opacity-30">
-               <div className="text-xs md:text-sm w-4"></div>
-               <div className="w-32 md:w-48 h-6 md:h-7 border border-dashed border-yellow-500/50 rounded bg-yellow-900/10"></div>
-               <div className="w-4"></div>
-            </div>
-          )
-        ))}
-      </div>
-      {analysis && (
-        <div className="text-center font-serif mt-auto pt-2 p-4 rounded-xl bg-black/30 border border-yellow-600/20 w-full shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
-          <div className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 mb-2 drop-shadow-[0_2px_2px_rgba(0,0,0,1)]">
-            {analysis.hexagramName}
-          </div>
-          <div className="text-sm md:text-base text-yellow-100/80 mt-2">
-            Ngoại Quái: <span className="font-bold text-yellow-400">{analysis.upperTrigram.element} ({analysis.upperTrigram.name})</span>
-          </div>
-          <div className="text-sm md:text-base text-yellow-100/80">
-            Nội Quái: <span className="font-bold text-yellow-400">{analysis.lowerTrigram.element} ({analysis.lowerTrigram.name})</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const Coin = ({ style, phase, isTossing, index }) => {
-  let positionTransition = '0.5s ease-in-out';
-  let rotationTransition = '0.5s ease-in-out';
-  let dynamicDropShadow = 'drop-shadow(0px 8px 6px rgba(0,0,0,0.5))';
-
-  if (phase === 'shake') {
-    positionTransition = '0.6s ease-in-out';
-    rotationTransition = '0.6s ease-in-out';
-    dynamicDropShadow = 'drop-shadow(0px 15px 10px rgba(0,0,0,0.6))';
-  } else if (phase === 'up') {
-    positionTransition = '1.6s cubic-bezier(0.1, 0.9, 0.2, 1)'; 
-    rotationTransition = '2.5s linear'; 
-    dynamicDropShadow = 'drop-shadow(0px 60px 20px rgba(0,0,0,0.4))'; 
-  } else if (phase === 'down') {
-    positionTransition = '1.2s cubic-bezier(0.34, 1.56, 0.64, 1)'; 
-    rotationTransition = '1.2s cubic-bezier(0.2, 0.8, 0.2, 1)'; 
-    dynamicDropShadow = 'drop-shadow(0px 4px 4px rgba(0,0,0,0.6))';
-  }
-
-  const shakeAnimation = phase === 'shake' ? `coin-shake 0.15s infinite ${index * 0.05}s` : 'none';
-
-  return (
-    <div 
-      className="absolute top-1/2 left-1/2 -ml-8 -mt-8 md:-ml-10 md:-mt-10 z-20"
-      style={{
-        transform: `translate(${style.x}px, ${style.y}px) scale(${style.scale})`,
-        transition: `transform ${positionTransition}`,
-        perspective: '1000px',
-        animation: shakeAnimation,
-        filter: dynamicDropShadow
-      }}
-    >
-      <div 
-        className="w-16 h-16 md:w-20 md:h-20 relative"
-        style={{
-          transformStyle: 'preserve-3d',
-          transform: `rotateX(${style.rx}deg) rotateY(${style.ry}deg) rotateZ(${style.rz}deg)`,
-          transition: `transform ${rotationTransition}`
-        }}
-      >
-        <div 
-          className="absolute inset-0 rounded-full border-4 border-[#92400e] flex flex-col items-center justify-center shadow-2xl"
-          style={{ 
-            backfaceVisibility: 'hidden', 
-            background: 'radial-gradient(circle, #facc15 0%, #b45309 100%)',
-            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.6), 0 5px 15px rgba(0,0,0,0.5)'
-          }}
-        >
-           <div className="w-4 h-4 md:w-5 md:h-5 bg-[#022c22] border-2 border-[#78350f] shadow-[inset_0_0_8px_rgba(0,0,0,0.9)] z-10"></div>
-           <span className="absolute text-[#451a03] font-serif font-black text-[10px] md:text-xs top-1.5 md:top-2">SẤP</span>
-           <span className="absolute text-[#451a03] font-serif font-bold text-[9px] md:text-[10px] bottom-1.5 md:bottom-2">(2)</span>
-        </div>
-        
-        <div 
-          className="absolute inset-0 rounded-full border-4 border-[#92400e] flex flex-col items-center justify-center shadow-2xl"
-          style={{ 
-            backfaceVisibility: 'hidden', 
-            transform: 'rotateY(180deg)',
-            background: 'radial-gradient(circle, #facc15 0%, #b45309 100%)',
-            boxShadow: 'inset 0 0 15px rgba(0,0,0,0.6), 0 5px 15px rgba(0,0,0,0.5)'
-          }}
-        >
-           <div className="w-4 h-4 md:w-5 md:h-5 bg-[#022c22] border-2 border-[#78350f] shadow-[inset_0_0_8px_rgba(0,0,0,0.9)] z-10"></div>
-           <span className="absolute text-[#451a03] font-serif font-black text-[10px] md:text-xs top-1.5 md:top-2">NGỬA</span>
-           <span className="absolute text-[#451a03] font-serif font-bold text-[9px] md:text-[10px] bottom-1.5 md:bottom-2">(3)</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-
-// ==========================================
-// 3. MAIN APP
-// ==========================================
-
-const INITIAL_COINS = [
-  { x: -50, y: 10, rx: 0, ry: 0, rz: 15, scale: 1 },
-  { x: 0, y: -15, rx: 0, ry: 0, rz: -25, scale: 1 },
-  { x: 50, y: 5, rx: 0, ry: 0, rz: 45, scale: 1 },
-];
-
-export default function App() {
-  const [step, setStep] = useState(1); // 1: Info Setup, 2: Tossing
-  const [matchData, setMatchData] = useState({
-    teamA: '', teamB: '', month: '', day: '', hour: '', handicap: ''
-  });
-
-  const [lines, setLines] = useState([]);
-  const [isTossing, setIsTossing] = useState(false);
-  const [phase, setPhase] = useState('idle');
-  const [coinStyles, setCoinStyles] = useState(INITIAL_COINS);
-  const [copied, setCopied] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setMatchData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleStart = (e) => {
-    e.preventDefault();
-    setStep(2);
-  };
-
-  const handleToss = () => {
-    if (lines.length >= 6 || isTossing) return;
-    setIsTossing(true);
-    
-    setPhase('shake');
-    setCoinStyles(prev => prev.map((_, i) => ({
-      ..._,
-      x: (Math.random() - 0.5) * 20, 
-      y: (Math.random() - 0.5) * 20,
-      scale: 1.1 
-    })));
-
-    const results = [
-      Math.random() > 0.5 ? 3 : 2,
-      Math.random() > 0.5 ? 3 : 2,
-      Math.random() > 0.5 ? 3 : 2,
-    ];
-
-    setTimeout(() => {
-      setPhase('up');
-      setCoinStyles(prev => prev.map((_, i) => ({
-        x: (Math.random() - 0.5) * 80,
-        y: -220 - Math.random() * 80, 
-        rx: Math.random() * 1440 + 1440, 
-        ry: Math.random() * 1440 + 1440,
-        rz: Math.random() * 1080,
-        scale: 1.5 + Math.random() * 0.3 
-      })));
-    }, 1200);
-
-    setTimeout(() => {
-      setPhase('down');
-      setCoinStyles(results.map((val, i) => {
-         const angle = (i * 120 + Math.random() * 30) * (Math.PI / 180);
-         const radius = 45 + Math.random() * 25; 
-         const isNgua = val === 3;
-         const targetRy = isNgua ? 180 + 1440 : 1440; 
-         
-         return {
-           x: Math.cos(angle) * radius,
-           y: Math.sin(angle) * radius,
-           rx: 0, 
-           ry: targetRy,
-           rz: Math.random() * 360, 
-           scale: 1
-         };
-      }));
-    }, 2800); 
-
-    setTimeout(() => {
-      setPhase('idle');
-      const sum = results.reduce((a, b) => a + b, 0);
-      setLines(prev => [...prev, sum]);
-      setIsTossing(false);
-    }, 4200); 
-  };
-
-  const handleReset = () => {
-    setLines([]);
-    setCoinStyles(INITIAL_COINS);
-    setCopied(false);
-    setStep(1); // Trở về nhập form mới
-  };
-
-  const isCompleted = lines.length === 6;
-  const hasChangingLines = lines.some(val => val === 6 || val === 9);
-
-  // Tạo chuỗi kết quả chuẩn Form AI
-  const getAiPrompt = () => {
-    if (!isCompleted) return '';
-    const chu = analyzeHexagram(lines, false)?.hexagramName;
-    const bien = analyzeHexagram(lines, true)?.hexagramName;
-    
-    // Tìm các hào động (có giá trị là 6 hoặc 9)
-    const changing = lines.map((val, idx) => (val === 6 || val === 9) ? idx + 1 : null).filter(v => v !== null);
-    const dongText = changing.length > 0 ? changing.join(', ') : 'Không có (Quẻ tĩnh)';
-
-    return `Đội A (Cửa trên / Chủ nhà): [${matchData.teamA || 'Trống'}]
-Đội B (Cửa dưới / Khách): [${matchData.teamB || 'Trống'}]
-Thời Gian Lăn Bóng: Tháng (${matchData.month || 'Trống'}), Ngày (${matchData.day || 'Trống'}), Giờ (${matchData.hour || 'Trống'})
-Tỉ lệ chấp: ${matchData.handicap || 'Trống'}
-Kết quả gieo quẻ: Quẻ Chủ [${chu}], Hào Động [${dongText}], Quẻ Biến [${bien}]`;
-  };
-
-  const copyToClipboard = () => {
-    const text = getAiPrompt();
-    try {
-      // Dùng cách cơ bản an toàn cho iFrame
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-    } catch (err) {
-      alert("Trình duyệt không hỗ trợ copy tự động. Vui lòng copy thủ công.");
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#022c22] bg-[radial-gradient(ellipse_at_top,_#064e3b_0%,_#022c22_70%,_#000000_100%)] text-yellow-50 font-sans p-4 md:p-8 overflow-x-hidden">
-      
-      {/* Khai báo keyframes cho hiệu ứng Lắc (Shake) */}
-      <style>{`
-        @keyframes coin-shake {
-          0% { transform: translate(1px, 1px) rotate(0deg); }
-          10% { transform: translate(-1px, -2px) rotate(-1deg); }
-          20% { transform: translate(-3px, 0px) rotate(1deg); }
-          30% { transform: translate(3px, 2px) rotate(0deg); }
-          40% { transform: translate(1px, -1px) rotate(1deg); }
-          50% { transform: translate(-1px, 2px) rotate(-1deg); }
-          60% { transform: translate(-3px, 1px) rotate(0deg); }
-          70% { transform: translate(3px, 1px) rotate(-1deg); }
-          80% { transform: translate(-1px, -1px) rotate(1deg); }
-          90% { transform: translate(1px, 2px) rotate(0deg); }
-          100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-      `}</style>
-
-      <div className="max-w-6xl mx-auto flex flex-col items-center">
-        
-        {/* Header */}
-        <div className="text-center mb-8 mt-2">
-          <h1 className="text-3xl md:text-5xl font-serif font-bold mb-3 tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-            Luận Đoán Bóng Đá (Lục Hào)
-          </h1>
-          <p className="text-yellow-200/80 font-serif italic max-w-xl mx-auto leading-relaxed text-sm md:text-base">
-            Gieo quẻ nạp thần - Phân tích Cục diện - Dự đoán trận đấu
-          </p>
-        </div>
-
-        {/* BƯỚC 1: NHẬP THÔNG TIN TRẬN ĐẤU */}
-        {step === 1 && (
-          <form onSubmit={handleStart} className="w-full max-w-2xl bg-black/40 p-6 md:p-10 rounded-2xl border border-yellow-600/40 shadow-[0_0_50px_rgba(0,0,0,0.8)] backdrop-blur-md">
-            <h2 className="text-xl md:text-2xl font-serif font-bold text-yellow-400 mb-8 text-center border-b border-yellow-700/50 pb-4">
-              Thông Tin Màn So Tài
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-yellow-200/80 font-serif">Đội A (Cửa trên / Chủ nhà)</label>
-                <input required type="text" name="teamA" value={matchData.teamA} onChange={handleInputChange} placeholder="VD: Belgium" 
-                  className="bg-[#022c22]/50 border border-yellow-700/50 rounded-lg px-4 py-3 text-yellow-100 placeholder-yellow-800/50 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all font-sans" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-sm text-yellow-200/80 font-serif">Đội B (Cửa dưới / Khách)</label>
-                <input required type="text" name="teamB" value={matchData.teamB} onChange={handleInputChange} placeholder="VD: New Zealand" 
-                  className="bg-[#022c22]/50 border border-yellow-700/50 rounded-lg px-4 py-3 text-yellow-100 placeholder-yellow-800/50 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all font-sans" />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 mb-8">
-              <label className="text-sm text-yellow-200/80 font-serif">Thời Gian Lăn Bóng (Nguyệt Kiến / Nhật Thần / Thời Kiến)</label>
-              <div className="grid grid-cols-3 gap-4">
-                <input required type="text" name="month" value={matchData.month} onChange={handleInputChange} placeholder="Tháng (VD: Ngọ)" 
-                  className="bg-[#022c22]/50 border border-yellow-700/50 rounded-lg px-4 py-3 text-yellow-100 placeholder-yellow-800/50 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all text-sm font-sans" />
-                <input required type="text" name="day" value={matchData.day} onChange={handleInputChange} placeholder="Ngày (VD: Dậu)" 
-                  className="bg-[#022c22]/50 border border-yellow-700/50 rounded-lg px-4 py-3 text-yellow-100 placeholder-yellow-800/50 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all text-sm font-sans" />
-                <input required type="text" name="hour" value={matchData.hour} onChange={handleInputChange} placeholder="Giờ (VD: Tuất)" 
-                  className="bg-[#022c22]/50 border border-yellow-700/50 rounded-lg px-4 py-3 text-yellow-100 placeholder-yellow-800/50 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all text-sm font-sans" />
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 mb-10">
-              <label className="text-sm text-yellow-200/80 font-serif">Tỉ lệ chấp (Handicap)</label>
-              <input required type="text" name="handicap" value={matchData.handicap} onChange={handleInputChange} placeholder="VD: Đội A chấp 1 trái" 
-                className="bg-[#022c22]/50 border border-yellow-700/50 rounded-lg px-4 py-3 text-yellow-100 placeholder-yellow-800/50 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 transition-all font-sans" />
-            </div>
-
-            <button type="submit"
-              className="w-full py-4 rounded-xl text-lg md:text-xl font-bold tracking-widest uppercase shadow-[0_0_20px_rgba(234,179,8,0.2)] border border-yellow-500/50 bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-700 text-green-950 hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] transition-all duration-300"
-            >
-              Bắt Đầu Gieo Quẻ
-            </button>
-          </form>
-        )}
-
-        {/* BƯỚC 2: GIEO QUẺ VÀ KẾT QUẢ */}
-        {step === 2 && (
-          <div className="w-full flex flex-col items-center animate-fade-in">
-            <div className="flex flex-col xl:flex-row items-center xl:items-stretch justify-center gap-10 xl:gap-16 w-full mb-10">
-              
-              {/* Mâm Gieo Quẻ */}
-              {!isCompleted && (
-                <div className="flex flex-col items-center w-full max-w-sm shrink-0">
-                  <div className="relative w-full aspect-square bg-gradient-to-br from-[#064e3b] to-[#011a14] rounded-full border-[8px] border-yellow-700/60 shadow-[inset_0_0_60px_rgba(0,0,0,1),0_10px_40px_rgba(0,0,0,0.6)] flex items-center justify-center overflow-hidden mb-8 ring-2 ring-black/50">
-                    <div className="absolute inset-0 rounded-full border-[1.5px] border-yellow-600/15 m-4 border-dashed"></div>
-                    <div className="absolute inset-0 rounded-full border border-yellow-600/10 m-12"></div>
-                    <div className="absolute inset-0 rounded-full border border-yellow-600/5 m-20 flex items-center justify-center bg-black/10"></div>
-                    
-                    {coinStyles.map((style, i) => (
-                      <Coin key={i} index={i} style={style} phase={phase} isTossing={isTossing} />
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleToss}
-                    disabled={isTossing}
-                    className={`
-                      w-full py-4 rounded-full text-lg md:text-xl font-bold tracking-widest uppercase shadow-[0_0_20px_rgba(234,179,8,0.3)] border border-yellow-500/50
-                      transition-all duration-300 transform
-                      ${isTossing 
-                        ? 'bg-yellow-900/40 text-yellow-600/50 cursor-not-allowed scale-95 shadow-none border-yellow-900/50' 
-                        : 'bg-gradient-to-r from-yellow-700 via-yellow-500 to-yellow-700 text-green-950 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(234,179,8,0.6)]'
-                      }
-                    `}
-                  >
-                    {isTossing ? 'Đang Gieo...' : `Gieo Hào ${lines.length + 1}`}
-                  </button>
-                </div>
-              )}
-
-              {/* Khung Kết Quả Quẻ */}
-              <div className="flex flex-col md:flex-row gap-8 md:gap-10 shrink-0 w-full md:w-auto items-center md:items-stretch justify-center relative z-10">
-                <HexagramDisplay lines={lines} isTransformed={false} title="Quẻ Chủ" />
-                
-                {isCompleted && (
-                  <>
-                    <div className="flex self-center text-4xl text-yellow-600/50 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)] my-2 md:my-0 transform md:rotate-0 rotate-90 h-full">
-                      →
-                    </div>
-                    <div className="relative flex">
-                      {!hasChangingLines && (
-                        <div className="absolute inset-0 bg-[#022c22]/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center rounded-2xl border border-yellow-700/50 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
-                          <span className="text-yellow-400 font-serif text-2xl text-center px-6 drop-shadow-md font-bold">
-                            Quẻ Tĩnh <br/>
-                            <span className="text-sm opacity-80 font-normal mt-2 block">(Không có Hào Động, <br/> giữ nguyên Quẻ Chủ)</span>
-                          </span>
-                        </div>
-                      )}
-                      <HexagramDisplay lines={lines} isTransformed={true} title="Quẻ Biến" />
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Khung Báo Cáo AI (Chỉ hiện khi đã gieo đủ 6 hào) */}
-            {isCompleted && (
-              <div className="w-full max-w-4xl bg-black/60 p-6 md:p-8 rounded-2xl border border-yellow-500/50 shadow-2xl mt-4 animate-fade-in">
-                <div className="flex justify-between items-center mb-4 border-b border-yellow-700/50 pb-3">
-                  <h3 className="text-xl font-serif text-yellow-400 font-bold">Chuỗi Dữ Liệu Luận Đoán</h3>
-                  <button 
-                    onClick={copyToClipboard}
-                    className={`px-4 py-2 rounded font-bold text-sm transition-all duration-300 ${copied ? 'bg-green-600 text-white border-green-500' : 'bg-yellow-600 text-green-950 hover:bg-yellow-500'}`}
-                  >
-                    {copied ? '✓ Đã Copy' : '📋 Copy cho AI'}
-                  </button>
-                </div>
-                
-                <pre className="bg-[#011a14] p-4 rounded-lg text-yellow-100/90 whitespace-pre-wrap font-sans text-sm md:text-base border border-yellow-900/50 leading-relaxed">
-                  {getAiPrompt()}
-                </pre>
-
-                <div className="mt-8 text-center flex justify-center">
-                   <button
-                    onClick={handleReset}
-                    className="px-8 py-3 rounded-full border border-yellow-500/50 text-yellow-500 font-bold hover:bg-yellow-900/30 hover:border-yellow-400 transition-all duration-300"
-                  >
-                    Làm mới & Tạo trận khác
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-      </div>
-    </div>
-  );
+    background:url("assets/bg.jpg");
+    background-size:cover;
+    background-position:center;
 }
+
+
+/* bảng chính */
+.box{
+
+    width:90%;
+    max-width:500px;
+
+    margin:30px auto;
+    padding:25px;
+
+    background:url("assets/panel.png");
+    background-size:100% 100%;
+
+    border:none;
+    border-radius:20px;
+
+}
+
+
+/* popup */
+.popup{
+
+    position:fixed;
+
+    top:50%;
+    left:50%;
+
+    transform:translate(-50%,-50%);
+
+    width:420px;
+    padding:30px;
+
+    background:url("assets/popup.png");
+    background-size:100% 100%;
+
+}
+
+
+
+/* ô nhập */
+input,select{
+
+    width:80%;
+    height:40px;
+
+    color:#fff;
+
+    background:url("assets/input.png");
+    background-size:100% 100%;
+
+    border:none;
+
+    text-align:center;
+
+    outline:none;
+
+}
+
+
+
+/* nút */
+button{
+
+    padding:15px 30px;
+
+    color:#fff;
+
+    font-weight:bold;
+
+    border:none;
+
+    cursor:pointer;
+
+
+    background:url("assets/button.png");
+    background-size:100% 100%;
+
+}
+
+
+
+/* đồng xu */
+
+.coin{
+
+    width:80px;
+    height:80px;
+
+    background:url("assets/coin.png");
+
+    background-size:cover;
+
+    display:inline-flex;
+
+    justify-content:center;
+    align-items:center;
+
+
+    font-size:25px;
+
+}
+
+
+
+/* đĩa */
+
+.plate{
+
+    width:250px;
+
+    height:100px;
+
+    margin:auto;
+
+
+    background:url("assets/plate.png");
+
+    background-size:contain;
+
+    background-repeat:no-repeat;
+
+}
+
+
+
+</style>
